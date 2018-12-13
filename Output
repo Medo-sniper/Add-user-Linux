@@ -1,0 +1,50 @@
+-----------------------------------------------------------------
+output:
+
+
+ahmad2@ubuntu:~$ sudo localuser
+try 'localuser help'
+ahmad2@ubuntu:~$ clear
+[3;J
+ahmad2@ubuntu:~$ sudo localuser
+try 'localuser help'
+ahmad2@ubuntu:~$ sudo localuser help
+usage: localuser command [options]
+where command is:
+  help [command]
+  add name [options]
+  delete name [options]
+for more specific help, try localuser help add
+ahmad2@ubuntu:~$ sudo localuser help add
+usage: localuser add login [options]
+where options are:
+--home dir    -set the home directory to dir
+--name fullname    -set the username to fullname
+--shell sh    -set user shell to sh
+--skel dir    -use skeleton directory dir to build user home
+--noexec    -do not execute te commands, print them
+ahmad2@ubuntu:~$ sudo localuser add tom
+ERROR: tom already exists as a user
+ahmad2@ubuntu:~$ sudo localuser add herkimer
+ERROR: herkimer already exists as a user
+ahmad2@ubuntu:~$ sudo localuser add bj --dir /home/bob.johnson --name "Bob Johnson" --shell /bin/csh
+cp: omitting directory '/etc/skel'
+ahmad2@ubuntu:~$ sudo localuser add bj --dir /home/bob.johnson --name "Bob Johnson" --shell /bin/csh
+ERROR: bj already exists as a user
+ahmad2@ubuntu:~$ sudo cp localuser /usr/local/bin
+ahmad2@ubuntu:~$ sudo localuser add bjj --dir /home/bob.johnsonn --name "Bob Johnson" --shell /bin/csh
+cp: omitting directory '/etc/skel'
+user bjj added
+ahmad2@ubuntu:~$ sudo cp localuser /usr/local/bin
+ahmad2@ubuntu:~$ sudo localuser add tomboy --noexec
+echo tomboy:x:1005:1005:::>>/etc/passwd
+echo tomboy:!:days_since_epoch:0:99999:7:::>>/etc/shadow
+echo tomboy:x:1005:>>/etc/group
+echo tomboy:!::>>/etc/gshadow
+cp /etc/skel /home/tomboy
+chown -R tomboy:tomboy /home/tomboy
+ahmad2@ubuntu:~$ sudo localuser add bj --dir /home/bob.johnson --name "Bob Johnson" --shell /bin/csh
+ERROR: bj already exists as a user
+ahmad2@ubuntu:~$ sudo localuser add bobbyj --home /home/bob.johnson
+ERROR: directory  already in use
+
