@@ -1,0 +1,213 @@
+
+#!/bin/bash
+
+function usage {
+echo "usage: ${0##*/} command [options]"
+echo "where command is:"
+echo  "  help [command]"
+echo  "  add name [options]"
+echo  "  delete name [options]"
+}
+function help {
+if [[ h -eq 1 ]]; then
+   usage
+   echo "for more specific help, try ${0##*/} help add"
+elif [[ h -eq 2 ]]; then
+         echo "usage: ${0##*/} add login [options]"
+         echo "where options are:"
+         echo "--home dir    -set the home directory to dir"
+         echo "--name fullname    -set the username to fullname"
+         echo "--shell sh    -set user shell to sh"
+         echo "--skel dir    -use skeleton directory dir to build user home"
+         echo "--noexec    -do not execute te commands, print them"
+fi
+}
+function printcommands {
+printf "echo "$login:x:$freeid:$freegid:$fullName:$dir:$usershell">>/etc/passwd\\n"
+printf "echo "$login:!:days_since_epoch:0:99999:7:::">>/etc/shadow\\n"
+printf "echo "$login:x:$freegid:">>/etc/group\n"
+printf "echo "$login:!::">>/etc/gshadow\n"
+printf "cp /etc/skel /home/$login\n"
+printf "chown -R $login:$login /home/$login\n"
+}
+
+function findgid {
+min_gid=$(grep "^GID_MIN" /etc/login.defs |cut -f2-)
+max_gid=$(grep "^GID_MAX" /etc/login.defs | cut -f2-)
+while read f1;
+ do
+   echo $f1 | cut -d':' -f4 | sort -n>>gids
+ done</etc/passwd
+freegid=$min_gid
+
+while read f1;
+do
+   g=$(echo $f1|cut -d':' -f4)
+if [ $freegid -ne $g ]; then
+   echo
+   :
+else
+   freegid=$(($freegid+1))
+   :
+fi
+done</etc/passwd
+}
+
+function finduid {
+min_uid=$(grep "^UID_MIN" /etc/login.defs | cut -f2-)
+max_uid=$(grep "^UID_MAX" /etc/login.defs | cut -f2-)
+while read f1;
+do
+   echo $f1 | cut -d':' -f3 | sort -n>>uids
+done</etc/passwd
+freeid=$min_uid
+
+while read field1;
+ do
+   u=$(echo $field1 | cut -d':' -f3)
+if [ $freeid -ne $u ]; then
+    :
+else
+    freeid=$(($freeid+1))
+    :
+fi
+ done < /etc/passwd
+}
+
+function addinguser {
+a=0
+while read field1 ;
+ do
+  p="$(echo $field1 | cut -d':' -f1)"
+    if [[ $login = $p ]];then
+       a=1
+    fi
+ done</etc/passwd
+
+if [ $a -eq 1 ]; then
+   echo "ERROR: ${login} already exists as a user"
+   :
+else
+   if [ -d $dir ]; then
+      echo "ERROR: directory $homedir already in use"
+      :
+   else
+      days_since_epoch=$(($(date +%s)/60*60*24))
+      echo $days_since_epoch
+      mkdir -p $dir
+      echo "$login:x:$freeid:$freegid:$fullName:$dir:$usershell">>/etc/passwd
+      echo "$login:!:$days_since_epoch:0:99999:7:::">>/etc/shadow
+      echo "$login:x:$freegid:">>/etc/group
+      echo "$login:!::">>/etc/gshadow
+      sudo cp /etc/skel $dir
+      sudo chown -R $login:$login $dir
+      echo "user ${login} added"
+   fi
+fi
+}
+function deleteuser {
+b=0
+while read field1;
+do
+   u="$(echo $field1 | cut -d':' -f1)"
+if [ ${usertodelete} = ${u} ];then
+   b=1
+   echo $field1>>temppasswd
+   delrec="$(echo $field1)"
+   :
+fi
+done</etc/passwd
+echo $usertodelete
+echo $u
+echo $delrec
+if [ $b -eq 0 ];then
+  echo "ERROR: ${usertodelete} is not exist as a user"
+  :
+else
+  echo
+
+fi
+}
+
+sudo touch uids
+sudo touch gids
+sudo touch temppasswd
+> uids
+> gids
+> temppasswd
+finduid
+findgid
+if [ $EUID -ne 0 ];then
+   echo "ERROR: you must be administrator to execute:'${0##*/}'"
+else
+   if [ -z "$1" ];then
+      echo "try '${0##*/} help'"
+   elif [ "$1"="help" ] && [ -z "$2" ];then
+       h=1
+       help
+       :
+   elif [ "$1" = "help" ] && [ "$2" = "add" ];then
+       h=2
+       help
+       :
+   elif [ "$1" = "add" ] && [ -n "$2" ]&& [ -z "$3" ] && [ -z "$4" ] && [ -z "$5" ] && [ -z "$6" ] && [ -z "$7" ] && [ -z "$8" ];then
+       login=$2
+       dir="/home/$login"
+       fullname=$login
+       usershell="/bin/sh"
+       skeldir="/etc/skel"
+       addinguser
+   elif [ "$1" = "add" ] && [ -n "$2" ]&& [ "$3" = "--noexec" ];then
+       login=$2
+       printcommands
+       :
+   elif [ "$1" = "add" ] && [ -n "$2" ]&& [ "$3" = "--home" ] && [ -n "$4" ] && [ "$5" = "--name" ] && [ -n "$6" ] && [ "$7" = "--shell" ] && [ -n "$8" ];then
+       login=$2
+       dir=$4
+       fullname=$6
+       usershell=$8
+       skeldir="/etc/skel"
+       addinguser
+   elif [ "$1" = "add" ] && [ -n "$2" ] && [ "$3" = "--home" ] && [ -n "$4" ] && [ -z "$5" ] && [ -z "$6" ] && [ -z "$7" ] && [ -z "$8" ];then
+       login=$2
+       dir=$4
+       fullname=$login
+       usershell="/bin/sh"
+       skeldir="/etc/skel"
+       addinguser
+   elif [ "$1" = "add" ] && [ -n "$2" ] && [ "$3" = "--name" ] && [ -n "$4" ] && [ -z "$5" ] && [ -z "$6" ] && [ -z "$7" ] && [ -z "$8" ];then
+       login=$2
+       dir="/home/$login"
+       fullname=$4
+       usershell="/bin/sh"
+       skeldir="/etc/skel"
+       addinguser
+   elif [ "$1" = "add" ] && [ -n "$2" ] && [ "$3" = "--shell" ] && [ -n "$4" ] && [ -z "$5" ] && [ -z "$6" ] && [ -z "$7" ] && [ -z "$8" ];then
+       login=$2
+       dir="/home/$login"
+       fullname=$login
+       usershell=$4
+       skeldir="/etc/skel"
+       addinguser
+   elif [ "$1" = "add" ] && [ -n "$2" ] && [ "$3" = "--home" ] && [ -n "$4" ] && [ "$5" = "--name" ] && [ -n "$6" ] && [ -z "$7" ] && [ -z "$8" ];then
+       login=$2
+       dir=$4
+       fullname=$6
+       usershell="/bin/sh"
+       skeldir="/etc/skel"
+       addinguser
+   elif [ "$1" = "add" ] && [ -n "$2" ] && [ "$3" = "--name" ] && [ -n "$4" ] && [ "$5" = "--shell" ] && [ -n "$6" ] && [ -z "$7" ] && [ -z "$8" ];then
+       login=$2
+       dir="/home/$login"
+       fullname=$4
+       usershell=$6
+       skeldir="/etc/skel"
+       addinguser
+   elif [ "$1" = "delete" ] && [ -n "$2" ];then
+        usertodelete=$2
+        deleteuser
+        :
+fi
+fi
+
+
